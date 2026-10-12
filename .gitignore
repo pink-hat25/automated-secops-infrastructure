@@ -1,17 +1,17 @@
-#opentofu_state_cache
+# OpenTofu / Terraform state & cache
 .terraform/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
-#ssh_keys_&_secrets
+
+# SSH Keys & Secrets
 *.pem
 *.key
 id_ed25519*
 id_rsa*
-#tmp_file
+*.pub
+
+# Ansible & Temp files
 *.retry
+*.log
 .DS_Store
-EOF
-#stage_&_first-commit
-git add .
-git commit -m "feat: initial commit automated secops infrastructure"
