@@ -1,0 +1,17 @@
+#opentofu_state_cache
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+#ssh_keys_&_secrets
+*.pem
+*.key
+id_ed25519*
+id_rsa*
+#tmp_file
+*.retry
+.DS_Store
+EOF
+#stage_&_first-commit
+git add .
+git commit -m "feat: initial commit automated secops infrastructure"

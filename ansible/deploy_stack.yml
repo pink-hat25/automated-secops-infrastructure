@@ -1,0 +1,67 @@
+---
+- name: Deploy Docker CLI, k3s, Prometheus, and Grafana on AlmaLinux 9
+  hosts: secops_nodes
+  become: true
+
+  tasks:
+    - name: Add Docker CE Repository
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: '0644'
+
+    - name: Install Docker CLI
+      ansible.builtin.dnf:
+        name:
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Allow k3s API & NodePort Range in Firewalld
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - 6443/tcp
+        - 30000-32767/tcp
+
+    - name: Check if k3s is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Install k3s Lightweight Kubernetes
+      ansible.builtin.shell: |
+        curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE="644" sh -
+      when: not k3s_binary.stat.exists
+
+    - name: Ensure k3s service is running
+      ansible.builtin.systemd:
+        name: k3s
+        state: started
+        enabled: true
+
+    - name: Install Helm Package Manager
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Prometheus Helm Repository
+      ansible.builtin.shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Deploy Prometheus & Grafana Stack via Helm
+      ansible.builtin.shell: |
+        helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+          --namespace monitoring --create-namespace \
+          --set grafana.service.type=NodePort \
+          --set grafana.service.nodePort=30000 \
+          --set grafana.adminPassword=admin123
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
